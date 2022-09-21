@@ -94,19 +94,6 @@ isIntList (x:xs) = case x of
                         _ -> False
 isIntList [] = True
 
-listToString :: [Value] -> String
-listToString [] = ""
-listToString (x:xs) = let res = case x of
-                                  NoneVal -> "None"
-                                  IntVal a -> show a
-                                  TrueVal -> show True
-                                  FalseVal -> show False 
-                                  StringVal s -> s 
-                                  ListVal (x:xs) -> "[" ++ listToString [x] ++ case xs of 
-                                                                                  [] ->  "]"
-                                                                                  _ -> ", " ++ listToString xs ++ "]"
-                      in res ++ listToString xs
-
 concatStrings :: [Value] -> String
 concatStrings [] = "" 
 {- concatStrings (x:[]) = let res = case v of
@@ -124,27 +111,18 @@ concatStrings (v:vs) = let res = case v of
                                     TrueVal -> show True
                                     FalseVal -> show False 
                                     StringVal s -> s 
-                                    ListVal xs -> "[" ++ listToString xs ++ "]"
+                                    ListVal (x:xs) -> "[" ++ concatStrings [x] ++ "," ++ concatStrings xs ++ "]" -- prints comma after last element due to [x] = x:[]
                                     ListVal [] -> "[]"
-                        in res ++ case vs of
-                                   [] -> "" ++ concatStrings vs
-                                   _ -> " " ++ concatStrings vs
+                        in res ++ case vs of 
+                                    [] -> ""
+                                    _ -> " " ++ concatStrings vs
 
 apply :: FName -> [Value] -> Comp Value
 apply "range" vs = if (checkLen vs && isIntList vs) then 
                     case vs of
                       [IntVal a] -> return (ListVal (map IntVal [0 .. a-1]))
-                      [IntVal a, IntVal b] ->  return (ListVal (map IntVal [a .. b-1]))
-                      [IntVal a, IntVal b, IntVal c] -> if ((a > b && c>0) || (a < b && c < 0)) then return(ListVal [])
-                                                        else return (ListVal (map IntVal [a, a+c .. b - (c `div` abs c)]))
-                                                            
-                        
-                        
-                         
-                                                        -- else if c < 0 then let n = b+1 xelse
-                                                        --  let n = b - 1 in return (ListVal (map IntVal [map IntVal [a, a+c .. n]]))
-                                                        --if c < 0 then return (ListVal (map IntVal [a, a+c .. b+1])
-                                                        --else return (ListVal (map IntVal [a, a+c .. b-1])
+                      [IntVal a, IntVal b] -> return (ListVal (map IntVal [a .. b-1]))
+                      [IntVal a, IntVal b, IntVal c] -> return (ListVal (map IntVal [a, a+c .. b-1]))
                       _ -> undefined
                     else abort (EBadArg "Argument is invalid.")
 apply "print" vs = do _ <- output $ concatStrings vs; return (NoneVal)
@@ -174,5 +152,3 @@ execute = undefined
 -- operate Mod (IntVal 4) (IntVal (-1))
 -- concatStrings [NoneVal, IntVal 4, TrueVal, FalseVal, StringVal "Øyvin <3", ListVal [IntVal 4, NoneVal, ListVal [StringVal "Yo"]]]
 -- concatStrings [ListVal []]
--- [[1,2],None,[]]
--- concatStrings [ListVal[ListVal[IntVal 1, IntVal2], NoneVal, ListVal[]]]
