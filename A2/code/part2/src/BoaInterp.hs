@@ -68,6 +68,9 @@ operate Div (IntVal v1) (IntVal v2) = Right (IntVal (v1 `div` v2))
 operate Mod (IntVal v1) (IntVal v2) = Right (IntVal (v1 `mod` v2))
 operate Eq v1 v2 = if (v1 == v2) then (Right TrueVal)
                       else (Right FalseVal)
+operate Less v1 v2 = undefined
+operate Greater v1 v2 = undefined
+operate In v1 v2 = undefined
 operate _ _ _ = Left "Error, the operator couldn't handle the arguments."
 
 apply :: FName -> [Value] -> Comp Value
