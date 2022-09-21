@@ -61,7 +61,14 @@ truthy v = case v of
             _ -> True
 
 operate :: Op -> Value -> Value -> Either String Value
-operate = undefined
+operate Plus (IntVal v1) (IntVal v2) = Right (IntVal (v1 + v2))
+operate Minus (IntVal v1) (IntVal v2) = Right (IntVal (v1 - v2))
+operate Times (IntVal v1) (IntVal v2) = Right (IntVal (v1 * v2))
+operate Div (IntVal v1) (IntVal v2) = Right (IntVal (v1 `div` v2))
+operate Mod (IntVal v1) (IntVal v2) = Right (IntVal (v1 `mod` v2))
+operate Eq v1 v2 = if (v1 == v2) then (Right TrueVal)
+                      else (Right FalseVal)
+operate _ _ _ = Left "Error, the operator couldn't handle the arguments."
 
 apply :: FName -> [Value] -> Comp Value
 apply = undefined
@@ -79,3 +86,9 @@ execute = undefined
 
 
 -- ListOfFalse = [None, False, 0, "", []]
+
+---------TESTS
+-- truthy (ListVal [])
+-- operate Plus (IntVal 4) (IntVal (-1))
+-- operate Mod (IntVal 40) (IntVal (3))
+-- operate Mod (IntVal 4) (IntVal (-1))
