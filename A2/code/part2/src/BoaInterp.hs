@@ -88,7 +88,7 @@ withBinding :: VName -> Value -> Comp a -> Comp a
 withBinding x v m = Comp (\r -> let r' = r ++ [(x, v)] in runComp m r')
 
 output :: String -> Comp ()
-output s = Comp (\_ -> (Right (), [s] ++ mempty)) -- Do you have to put mempty??
+output s = Comp (\_ -> (Right (), [s])) -- Do you have to put mempty??
 
 -- Helper functions for interpreter, None, False, 0, "", [], are considered false
 truthy :: Value -> Bool
