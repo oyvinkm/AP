@@ -85,7 +85,7 @@ look x = Comp (\r -> case lookup x r of
                       Just a -> (Right a, mempty))
 
 withBinding :: VName -> Value -> Comp a -> Comp a
-withBinding x v m = Comp (\r -> let r' = r ++ [(x, v)] in runComp m r')
+withBinding x v m = Comp (\r -> runComp m ((x,v):r))
 
 output :: String -> Comp ()
 output s = Comp (\_ -> (Right (), [s] ++ mempty)) -- Do you have to put mempty??
@@ -105,9 +105,11 @@ operate Plus (IntVal v1) (IntVal v2) = Right (IntVal (v1 + v2))
 operate Minus (IntVal v1) (IntVal v2) = Right (IntVal (v1 - v2))
 operate Times (IntVal v1) (IntVal v2) = Right (IntVal (v1 * v2))
 operate Div (IntVal v1) (IntVal v2) = case v2 of
-                                        0 -> error "divide by zero"
+                                        0 -> Left "divide by zero"
                                         _ -> Right (IntVal (v1 `div` v2))
-operate Mod (IntVal v1) (IntVal v2) = Right (IntVal (v1 `mod` v2))
+operate Mod (IntVal v1) (IntVal v2) = case v2 of
+                                        0 -> Left "mod by zero"
+                                        _ -> Right (IntVal (v1 `mod` v2))
 operate Eq v1 v2 = if v1 == v2 then Right TrueVal
                       else Right FalseVal
 operate Less  (IntVal v1) (IntVal v2) = if v1 < v2 then Right TrueVal
@@ -148,7 +150,19 @@ eval (Call f es) = do vals <- mapM eval es
                       apply f vals
 eval (List es) = do xs <- mapM eval es
                     return (ListVal xs)
-
+eval (Compr e cs) = case cs of
+    [] -> do v1 <- eval e; return $ ListVal [v1]
+    (c : cs) -> case c of
+                  CCFor v x -> do 
+                            x1 <- eval x
+                            case x1 of 
+                              ListVal l -> do
+                                x2 <- mapM(\value -> withBinding v value (eval(Compr e cs))) l;
+                                  return (ListVal (concatMap(\(ListVal ss) -> ss) x2))
+                              _ -> abort $ EBadArg "Argument is invalid"
+                  CCIf x -> do v1 <- eval x; if truthy v1 
+                                              then eval $ Compr e cs
+                                             else return $ ListVal []
 
 exec :: Program -> Comp ()
 exec [] = return ()
