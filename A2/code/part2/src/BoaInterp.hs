@@ -2,6 +2,7 @@
 
 module BoaInterp
   (Env, RunError(..), Comp(..),
+   checkLen, isIntList, listToString, concatStrings, 
    abort, look, withBinding, output,
    truthy, operate, apply,
    eval, exec, execute)
@@ -14,6 +15,21 @@ type Env = [(VName, Value)]
 
 data RunError = EBadVar VName | EBadFun FName | EBadArg String
   deriving (Eq, Show)
+
+newtype Comp a = Comp {runComp :: Env -> (Either RunError a, [String]) }
+
+instance Monad Comp where
+  return a = Comp (\_ -> (Right a, mempty))
+  m >>= f = Comp (\r -> case runComp m r of 
+                            (Left e, s) -> (Left e, s)
+                            (Right a, s) -> let (x1, s1) = runComp (f a) r
+                                            in (x1, s <> s1))
+
+-- You shouldn't need to modify these r : (x, v)
+instance Functor Comp where
+  fmap = liftM
+instance Applicative Comp where
+  pure = return; (<*>) = ap
 
 -- Check if length of list is in range [1,3]
 checkLen :: [Value] -> Bool
@@ -60,21 +76,6 @@ concatStrings (v:vs) = let res = case v of
                         in res ++ case vs of
                                    [] -> "" ++ concatStrings vs
                                    _ -> " " ++ concatStrings vs
-newtype Comp a = Comp {runComp :: Env -> (Either RunError a, [String]) }
-
-instance Monad Comp where
-  return a = Comp (\_ -> (Right a, mempty))
-  m >>= f = Comp (\r -> case runComp m r of 
-                            (Left e, s) -> (Left e, s)
-                            (Right a, s) -> let (x1, s1) = runComp (f a) r
-                                            in (x1, s <> s1))
-
--- You shouldn't need to modify these r : (x, v)
-instance Functor Comp where
-  fmap = liftM
-instance Applicative Comp where
-  pure = return; (<*>) = ap
-
 -- Operations of the monad
 abort :: RunError -> Comp a
 abort re = Comp (\_ -> (Left re, mempty))
@@ -105,10 +106,10 @@ operate Plus (IntVal v1) (IntVal v2) = Right (IntVal (v1 + v2))
 operate Minus (IntVal v1) (IntVal v2) = Right (IntVal (v1 - v2))
 operate Times (IntVal v1) (IntVal v2) = Right (IntVal (v1 * v2))
 operate Div (IntVal v1) (IntVal v2) = case v2 of
-                                        0 -> Left "divide by zero"
+                                        0 -> Left "Cannot divide by zero"
                                         _ -> Right (IntVal (v1 `div` v2))
 operate Mod (IntVal v1) (IntVal v2) = case v2 of
-                                        0 -> Left "mod by zero"
+                                        0 -> Left "Cannot do mod by zero"
                                         _ -> Right (IntVal (v1 `mod` v2))
 operate Eq v1 v2 = if v1 == v2 then Right TrueVal
                       else Right FalseVal
