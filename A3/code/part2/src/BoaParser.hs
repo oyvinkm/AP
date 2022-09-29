@@ -10,6 +10,12 @@ import BoaAST
 type Parser a = ReadP a
 
 type ParseError = String -- you may replace this
+reserved :: [String]
+reserved = ["None", "True", "False", "for", "if", "in", "not"]
+keyword :: String -> Parser ()
+keyword s = lexeme $ do s' <- many1 (satisfy isAlphaNum)
+                        if s' == s then return ()
+                        else return pfail $ "expected " ++ s
 
 
 pProgram :: Parser [Stmt]
@@ -28,10 +34,14 @@ pStmt = do var <- pIdent; symbol "="; e <- pExpr; return $ SDef var e
        <|> do e <- pExpr; return $ SExp e
  
 pExpr :: Parser Exp
-pExpr = do t1 <- pTerm; pExprOpt t1
+pExpr = do e <- pExprNot; return e
+
+pExprNot :: Parser Exp
+pExprNot = do keyword "not"; Not <$> pExpr
+          <|> do t1 <- pTerm; pExprOpt t1 
 
 pExprOpt :: Exp -> Parser Exp
-pExprOpt t1 = do eo <- getExprOpt; t2 <- pTerm; return (eo t1 t2) -- Might not work, not sure what we are returning 
+pExprOpt t1 = lexeme(do eo <- getExprOpt; t2 <- pTerm; return (eo t1 t2)) -- Might not work, not sure what we are returning 
               <|> return t1
 
 getExprOpt :: Parser (Exp -> Exp -> Exp)
@@ -41,7 +51,8 @@ getExprOpt = do symbol "=="; return $ (\e1 e2 -> Oper Eq e1 e2)
             <|> do symbol "<="; return $ (\e1 e2 -> Not $ Oper Greater e1 e2)
             <|> do symbol ">"; return $ (\e1 e2 -> Oper Greater e1 e2)
             <|> do symbol ">="; return $ (\e1 e2 -> Not $ Oper Less e1 e2)
-            <|> do symbol "in"; return $ (\e1 e2 -> Oper In e1 e2)
+            -- <|> do symbol "not"; keyword "in"; return $ Not (\e1 e2 -> Oper In e1 e2)
+            -- <|> do symbol "not"; return $ (\e1 _ -> Not e1)
             -- <|> do symbol "not in"; return $ (\e1 e2 -> Not $ Oper In e1 e2)
 
 pTerm :: Parser Exp
@@ -78,86 +89,90 @@ getFactorOpt = do symbol "*"; return $ (\e1 e2 -> Oper Times e1 e2)
 ------ pFuncs --------
 
 pX :: Parser Exp
-pX = do n <- pNum; return $ Const $ IntVal n
-    <|> do s <- pString; return $ Const $ StringVal s
-    <|> do i <- pIdent; return $ Var i
-    <|> do bool <- pBool; return bool
-    <|> lexeme (do _ <- string "not";whitespace; e1 <- pExpr; return $ Not e1)
+pX = lexeme (do n <- pNum; return $ Const $ IntVal n)
+    <|> lexeme (do s <- pString; return $ Const $ StringVal s)
+    <|> lexeme (do i <- pIdent; return $ Var i)
+    <|> lexeme (do bool <- pAtom; return bool)
+    -- <|> lexeme (do _ <- symbol "not"; e1 <- pExpr; return $ Not e1)
+    <|> do i <- pIdent; symbol "("; ez <- pExprz; symbol ")"; return $ Call i ez
     <|> do symbol "("; e <- pExpr; symbol ")"; return e
-    <|> do compr <- pComprExp; return compr
-    -- <|> do symbol "["
-    --        ez <- (\e -> pExprz e)
-    --        symbol "]"; return ez
-    -- <|> do symbol "["
-    --        e <- pExpr
-    --        for <- pCClause
-
+    <|> do symbol "["; e <- pExpr; c <- pCCFor; cs <- pClausez; symbol "]"; return $ Compr e (c:cs)
+    <|> do symbol "[";ez <- pExprz; symbol "]"; return $ List ez
 
     -- <|> 
 -- Not canot parse expressions except constants: e.g. "not x < 5", however "not (x < 5) works"
 
-pBool :: Parser Exp
-pBool = do _ <- string "True"; return $ Const TrueVal
-        <|> do _ <- string "False"; return $ Const FalseVal
-        <|> do _ <- string "None"; return $ Const NoneVal
+-- Look at keywords in slides
+pAtom :: Parser Exp
+pAtom = do keyword "True"; return $ Const TrueVal
+        <|> do keyword "False"; return $ Const FalseVal
+        <|> do keyword "None"; return $ Const NoneVal
 
 -- Needs to check for None, True, False, for, if, in & not
-pIdent :: Parser String
-pIdent = lexeme ( do c <- (satisfy (\char -> isLetter char || char == '_'))
-                     s <- many (satisfy (\char -> isDigit char || isLetter char || char == '_')); return $ [c] ++ s )
-                  -- <|> do s <- keywords keywordz; err <- pfail; return err
 
-keywordz = ["None", "True", "False", "for", "if", "in", "not"]
+pIdent :: Parser String
+pIdent = lexeme (do c <- (satisfy (\char -> isLetter char || char == '_'))
+                    s <- many (satisfy (\char -> isDigit char || isLetter char || char == '_'))
+                    case (c:s) of 
+                        s -> if s `elem` reserved then do err <- pfail; return $ err
+                              else return s)
+
 
 -- Does not escape/newline or anything
+pStringEscape :: Parser ()
+pStringEscape = do symbol "\\"; satisfy(\char -> char == '\'' || char == '\\' || char == 'n'); return () 
+              <|> do err <- pfail; return err
 pString :: Parser String
-pString = lexeme ( do _ <- char '\''; s <- manyTill(satisfy isAscii) (satisfy isQuote); return $ s )
+pString = lexeme (do _ <- symbol "\'" 
+                     s <- manyTill(satisfy isAscii) (pStringEscape) 
+                     ss <- pString
+                     symbol "\'"
+                     return $ (s ++ ss))
 
 
 pNum :: Parser Int
-pNum = do _ <- char '0'; many1 (satisfy (isDigit)); err <- pfail; return err -- should just fail
-      <|> lexeme (do _ <- char '-' -- handles negative
+pNum = lexeme(do _ <- char '0'; many1 (satisfy (isDigit)); err <- pfail; return err) -- should just fail
+      <|> lexeme (do _ <- symbol "-" -- handles negative
                      d <- (satisfy (\char -> char >= '1' && char <= '9'))
                      ds <- many (satisfy isDigit) 
                      return $ negate $ read $ [d] ++ ds)
       <|> lexeme (do d <- (satisfy (\char -> char >= '1' && char <= '9')) -- handles 0 < 
                      ds <- many (satisfy isDigit)
                      return $ read $ [d] ++ ds)
-      <|> lexeme (do d <- string "0"; return $ read $ d)
-      -- <|> lexeme (do _)
-pComprExp :: Parser Exp
-pComprExp = lexeme (do symbol "["
-                       e1 <- pExpr
-                       cclauses <- many pCClause
-                       symbol "]"
-                       return $ Compr e1 cclauses)
+      <|> lexeme (do _ <- skipMany (satisfy (\c -> c == '-')); d <- string "0"; return $ read $ d)
 
 
-pCClause :: Parser CClause
-pCClause = do _ <- string "for"
-              var <- pIdent 
-              e <- pExpr
-              return $ CCFor var e
-        <|> do _ <- string "if";
-                e <- pExpr;
-                return $ CCIf e
-                    -- <|> do _ 
+pClausez :: Parser [CClause]
+pClausez = do return []
+          <|> do ccFor <- pCCFor; cs <- pClausez; return (ccFor : cs)
+          <|> do ccIf <- pCCIf; cs <- pClausez; return (ccIf : cs)
 
-
-
+pCCFor :: Parser CClause
+pCCFor = lexeme (do _ <- symbol "for"
+                    whitespace
+                    var <- pIdent 
+                    _ <- symbol "in"
+                    whitespace
+                    e <- pExpr
+                    return $ CCFor var e)
+pCCIf :: Parser CClause
+pCCIf = lexeme (do _ <- symbol "if"
+                   whitespace
+                   e <- pExpr
+                   return $ CCIf e)
 
 -- Containin 0 or more Exps. We're having a hard time figuring out what type we should return
 -- and how we do lists
-pExprz :: [Exp] -> Parser [Exp]
-pExprz es = do e1 <- pExprs; return e1
-            <|> return es
+pExprz :: Parser [Exp]
+pExprz = do return []
+            <|> do es <- pExprs; return es
 
 -- Containing 1 or more Exps.
 pExprs :: Parser [Exp]
 pExprs = do e <- pExpr
             symbol ","
             es <- pExprs
-            return (e: es)
+            return (e:es)
             <|> do e1 <- pExpr; return [e1]
 
 

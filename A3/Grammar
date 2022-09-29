@@ -3,8 +3,6 @@ Program ::= Stmts
 
 Stmts ::= Stmt
         |Stmt ‘;’ Stmts
-
-
 Stmt ::= ident ‘=’ Expr
         |Expr
 
@@ -18,12 +16,13 @@ ExprOpt ::= '==' Term
           | '>' Term  
           | '>=' Term  
           | 'in' Term  
-          | 'not' 'in' Term 
+          | 'not' Term -- mangler
+          | 'not' 'in' Term -- mangler
           | e 
 
 Term ::= Factor TermOpt
 
-TermOpt ::= '+' Factor TermOpt 
+TermOpt ::= '+' Factor TermOpt -- x+y-z virker ikke
           | '-' Factor TermOpt 
           | e
 
@@ -34,15 +33,19 @@ FactorOpt ::= '*' X FactorOpt
                | '%' X FactorOpt 
                | e
 
-X ::= numConst 
-    | stringConst 
+X ::= numConst -- "-0" virker ikke
+    | stringConst -- Virker dårligt
     | ident 
     | '(' E ')'
-    | 'not' Expr
-    | ident '(' Exprz ')'
-    | ‘[’ Exprz ‘]’
-    | ‘[’ Expr ForClause Clausez ‘]’
-    | 'None' | 'True' | 'False' 
+    | '(' Expr ')'
+    | ident '(' Exprz ')' -- Virker nok ikke
+    |‘[’ Exprz ‘]’
+    |‘[’ Expr ForClause Clausez ‘]’
+    | bool
+
+bool ::= 'None'
+    | 'True'
+    | 'False' 
 
 ForClause ::= ‘for’ ident ‘in’ Expr
 
@@ -52,9 +55,9 @@ Clausez ::= e
           | ForClause Clausez
           | IfClause Clausez
 Exprz ::= e
-        | Exprs
+        |Exprs
 Exprs ::= Expr
-        | Expr ‘,’ Exprs
+        |Expr ‘,’ Exprs
 
 ident ::= (see text)
 numConst ::= (see text)
