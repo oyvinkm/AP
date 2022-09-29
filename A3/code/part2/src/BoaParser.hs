@@ -53,7 +53,7 @@ pTermOpt f1 = do to <- getTermOpt; f2 <- pFactor; pTermOpt (to f1 f2)
 
 getTermOpt :: Parser (Exp -> Exp -> Exp)
 getTermOpt = do symbol "+"; return $ (\e1 e2 -> Oper Plus e1 e2)
-             <|> do symbol "e"; return $ (\e1 e2 -> Oper Minus e1 e2)
+             <|> do symbol "-"; return $ (\e1 e2 -> Oper Minus e1 e2)
 
 pFactor :: Parser Exp
 pFactor = do x1 <- pX; pFactorOpt x1
@@ -85,9 +85,13 @@ pX = do n <- pNum; return $ Const $ IntVal n
     <|> lexeme (do _ <- string "not";whitespace; e1 <- pExpr; return $ Not e1)
     <|> do symbol "("; e <- pExpr; symbol ")"; return e
     <|> do compr <- pComprExp; return compr
-    <|> do symbol "["
-           ez <- (\e -> pExprz e)
-           symbol "]"; return ez
+    -- <|> do symbol "["
+    --        ez <- (\e -> pExprz e)
+    --        symbol "]"; return ez
+    -- <|> do symbol "["
+    --        e <- pExpr
+    --        for <- pCClause
+
 
     -- <|> 
 -- Not canot parse expressions except constants: e.g. "not x < 5", however "not (x < 5) works"
@@ -127,6 +131,7 @@ pComprExp = lexeme (do symbol "["
                        cclauses <- many pCClause
                        symbol "]"
                        return $ Compr e1 cclauses)
+
 
 pCClause :: Parser CClause
 pCClause = do _ <- string "for"
