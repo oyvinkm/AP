@@ -10,7 +10,7 @@ module WarmupReadP where
 -- Rewritten grammar, without left-recursion:
 --   E ::= T Eopt | "-" T Eopt
 --   Eopt ::= "+" T Eopt | "-" T Eopt | eps
---   T ::= num | "(" E ")"
+--   T ::= num | "(" E ")" 
 
 
 import Text.ParserCombinators.ReadP

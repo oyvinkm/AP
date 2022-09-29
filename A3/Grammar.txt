@@ -1,0 +1,81 @@
+E = Expr
+
+-- Oper --
+E :== E Oper E
+
+-- Non Left Recursive --
+E :== T Eopt
+Eopt :== '==' T Eopt | '!='T Eopt | '<' T Eopt | '<=' T Eopt | '>' T Eopt | '>=' T Eopt | 'in' T Eopt | 'not' 'in' T Eopt | e 
+T :== F Topt
+Topt :== '+' F Topt | '-' F Topt | e
+F :== X Fopt
+Fopt :== '*' X Fopt | '//' X Fopt | '%' X Fopt | e
+X :== numConst | stringConst | ident | '(' E ')'
+
+
+E = Expr
+
+-- Oper --
+E :== E Oper E
+####GRAMMAR####
+Program ::= Stmts
+
+Stmts ::= Stmt
+        |Stmt ‘;’ Stmts
+Stmt ::= ident ‘=’ Expr
+        |Expr
+
+-- Non Left Recursive --
+Expr :== numConst
+    | stringConst
+    | 'None' | 'True' | 'False'
+    | ident
+    | Term ExprOpt
+    | 'not' Expr
+    | '(' Expr ')'
+    | ident '(' Exprz ')'
+    |‘[’ Exprz ‘]’
+    |‘[’ Expr ForClause Clausez ‘]’
+
+ExprOpt :== '==' Term 
+          | '!=' Term 
+          | '<' Term  
+          | '<=' Term 
+          | '>' Term  
+          | '>=' Term  
+          | 'in' Term  
+          | 'not' 'in' Term 
+          | e 
+Term :== Factor TermOpt
+
+TermOpt :== '+' Factor TermOpt 
+          | '-' Factor TermOpt 
+          | e
+
+Factor :== X FactorOpt
+
+FactorOpt :== '*' X FactorOpt 
+               | '//' X FactorOpt 
+               | '%' X FactorOpt 
+               | e
+
+X :== numConst 
+    | stringConst 
+    | ident 
+    | '(' E ')'
+
+ForClause ::= ‘for’ ident ‘in’ Expr
+
+IfClause ::= ‘if’ Expr
+
+Clausez ::= e
+          | ForClause Clausez
+          |IfClause Clausez
+Exprz ::= e
+        |Exprs
+Exprs ::= Expr
+        |Expr ‘,’ Exprs
+
+ident ::= (see text)
+numConst ::= (see text)
+stringConst ::= (see text)
