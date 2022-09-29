@@ -1,0 +1,61 @@
+####GRAMMAR####
+Program ::= Stmts
+
+Stmts ::= Stmt
+        |Stmt ‘;’ Stmts
+
+
+Stmt ::= ident ‘=’ Expr
+        |Expr
+
+-- Non Left Recursive --
+Expr ::= Term ExprOpt 
+
+ExprOpt ::= '==' Term 
+          | '!=' Term 
+          | '<' Term  
+          | '<=' Term 
+          | '>' Term  
+          | '>=' Term  
+          | 'in' Term  
+          | 'not' 'in' Term 
+          | e 
+
+Term ::= Factor TermOpt
+
+TermOpt ::= '+' Factor TermOpt 
+          | '-' Factor TermOpt 
+          | e
+
+Factor ::= X FactorOpt
+
+FactorOpt ::= '*' X FactorOpt 
+               | '//' X FactorOpt 
+               | '%' X FactorOpt 
+               | e
+
+X ::= numConst 
+    | stringConst 
+    | ident 
+    | '(' E ')'
+    | 'not' Expr
+    | ident '(' Exprz ')'
+    | ‘[’ Exprz ‘]’
+    | ‘[’ Expr ForClause Clausez ‘]’
+    | 'None' | 'True' | 'False' 
+
+ForClause ::= ‘for’ ident ‘in’ Expr
+
+IfClause ::= ‘if’ Expr
+
+Clausez ::= e
+          | ForClause Clausez
+          | IfClause Clausez
+Exprz ::= e
+        | Exprs
+Exprs ::= Expr
+        | Expr ‘,’ Exprs
+
+ident ::= (see text)
+numConst ::= (see text)
+stringConst ::= (see text)
