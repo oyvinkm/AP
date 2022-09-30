@@ -19,7 +19,7 @@ keyword s = lexeme $ do s' <- munch isAlphaNum
                         Control.Monad.unless (s' == s) pfail
 
 pProgram :: Parser [Stmt]
-pProgram = do p <- pStmts; return p
+pProgram = do pStmts
 
 pStmts :: Parser [Stmt]
 pStmts = do sm <- pStmt; return [sm]
@@ -34,25 +34,26 @@ pStmt = do var <- pIdent; symbol "="; e <- pExpr; return $ SDef var e
        <|> do e <- pExpr; return $ SExp e
  
 pExpr :: Parser Exp
-pExpr = do e <- pExprNot; return e
+pExpr = do pExprNot
 
 pExprNot :: Parser Exp
 pExprNot = do keyword "not"; Not <$> pExpr
           <|> do t1 <- pTerm; pExprOpt t1 
 
 pExprOpt :: Exp -> Parser Exp
-pExprOpt t1 = do eo <- getExprOpt; t2 <- pTerm; return (eo t1 t2) -- Might not work, not sure what we are returning 
+pExprOpt t1 = do eo <- getExprOpt; t2 <- pTerm; return (eo t1 t2)
               <|> return t1
 
 getExprOpt :: Parser (Exp -> Exp -> Exp)
-getExprOpt = do symbol "=="; return $ (\e1 e2 -> Oper Eq e1 e2)
-            <|> do symbol "!="; return $ (\e1 e2 -> Not $ Oper Eq e1 e2)
-            <|> do symbol "<"; return $ (\e1 e2 -> Oper Less e1 e2)
-            <|> do symbol "<="; return $ (\e1 e2 -> Not $ Oper Greater e1 e2)
-            <|> do symbol ">"; return $ (\e1 e2 -> Oper Greater e1 e2)
-            <|> do symbol ">="; return $ (\e1 e2 -> Not $ Oper Less e1 e2)
-            <|> do keyword "in"; return $ (\e1 e2 -> Oper In e1 e2)
-            <|> do keyword "not"; do keyword "in"; return $ (\e1 e2 -> Not $ Oper In e1 e2)
+getExprOpt = do symbol "=="; return $ Oper Eq
+            <|> do symbol "<"; return $ Oper Less
+            <|> do symbol ">"; return $ Oper Greater
+            <|> do keyword "in"; return $ Oper In
+            <|> do symbol "<="; return (\e1 e2 -> Not $ Oper Greater e1 e2)
+            <|> do symbol ">="; return (\e1 e2 -> Not $ Oper Less e1 e2)
+            <|> do symbol "!="; return (\e1 e2 -> Not $ Oper Eq e1 e2)
+            <|> do keyword "not"; do keyword "in"
+                   return (\e1 e2 -> Not $ Oper In e1 e2)
 
 pTerm :: Parser Exp
 pTerm = do f1 <- pFactor; pTermOpt f1
@@ -62,8 +63,8 @@ pTermOpt f1 = do to <- getTermOpt; f2 <- pFactor; pTermOpt (to f1 f2)
               <|> return f1
 
 getTermOpt :: Parser (Exp -> Exp -> Exp)
-getTermOpt = do symbol "+"; return $ (\e1 e2 -> Oper Plus e1 e2)
-             <|> do symbol "-"; return $ (\e1 e2 -> Oper Minus e1 e2)
+getTermOpt = do symbol "+"; return $ Oper Plus
+             <|> do symbol "-"; return $ Oper Minus
 
 pFactor :: Parser Exp
 pFactor = do x1 <- pX; pFactorOpt x1
@@ -73,47 +74,37 @@ pFactorOpt x1 = do fo <- getFactorOpt; x2 <- pX; pFactorOpt (fo x1 x2)
               <|> return x1
 
 getFactorOpt :: Parser (Exp -> Exp -> Exp)
-getFactorOpt = do symbol "*"; return $ (\e1 e2 -> Oper Times e1 e2)
-             <|> do symbol "//"; return $ (\e1 e2 -> Oper Div e1 e2)
-             <|> do symbol "%"; return $ (\e1 e2 -> Oper Mod e1 e2)
-
-
-
--- questions
--- pX: Not cannot parse expressions except constants: e.g. "not x < 5", however "not (x < 5) works"
--- pIdent: Needs to check for None, True, False, for, if, in & not, how do we fail?
--- pString: Does not escape/newline or anything
-
-
------- pFuncs --------
-
-
+getFactorOpt = do symbol "*"; return $ Oper Times
+             <|> do symbol "//"; return $ Oper Div
+             <|> do symbol "%"; return $ Oper Mod
 
 
 pX :: Parser Exp
 pX = lexeme (do n <- pNum; return $ Const $ IntVal n)
-    <|> lexeme (do symbol "\'"; do s <- pString; symbol "\'"; return $ Const $ StringVal s)
-    <|> lexeme (do bool <- pAtom; return bool)
+    <|> lexeme (do symbol "\'"; do s <- pString; symbol "\'" 
+                                   return $ Const $ StringVal s)
+    <|> lexeme (do pAtom)
     <|> lexeme (do i <- pIdent; return $ Var i)
-    <|> do i <- pIdent; symbol "("; ez <- pExprz; symbol ")"; return $ Call i ez
+    <|> do i <- pIdent; symbol "("; ez <- pExprz; symbol ")"
+           return $ Call i ez
     <|> do symbol "("; e <- pExpr; symbol ")"; return e
-    <|> do symbol "["; e <- pExpr; c <- pCCFor; cs <- pClausez; symbol "]"; return $ Compr e (c:cs)
+    <|> do symbol "["; e <- pExpr; c <- pCCFor; cs <- pClausez; symbol "]"
+           return $ Compr e (c:cs)
     <|> do symbol "[";ez <- pExprz; symbol "]"; return $ List ez
 
--- Look at keywords in slides
+
 pAtom :: Parser Exp
 pAtom = do keyword "True"; return $ Const TrueVal
         <|> do keyword "False"; return $ Const FalseVal
         <|> do keyword "None"; return $ Const NoneVal
 
--- Needs to check for None, True, False, for, if, in & not
 
 pIdent :: Parser String
-pIdent = lexeme $ do c <- satisfy(\c -> isAlpha c ||  c == '_')
+pIdent = lexeme $ do c <- satisfy(\c -> isAlpha c || c == '_')
                      cs <- many (satisfy (\c -> isAlphaNum c || c == '_'))
                      let i = c:cs
                      if i `notElem` reserved then return i
-                     else do err <- pfail; return $ err
+                     else do pfail
 
 
 pStringAgain :: Parser String
@@ -124,21 +115,23 @@ pStringAgain = do symbol "\n";s <- pString; return $ "\n" ++ s
 
 pString :: Parser String
 pString = do s <- many(satisfy isAscii)
-             x <- many(pStringAgain)
-             return $ (s ++ concat x)
-
+             x <- many pStringAgain
+             return $ s ++ concat x
 
 
 pNum :: Parser Int
-pNum = lexeme(do _ <- char '0'; many1 (satisfy (isDigit)); err <- pfail; return err) -- should just fail
-      <|> lexeme (do _ <- symbol "-" -- handles negative
-                     d <- (satisfy (\char -> char >= '1' && char <= '9'))
+pNum = do _ <- char '0' 
+          many1 (satisfy isDigit)
+          pfail
+      <|> lexeme (do _ <- symbol "-" -- handles negative numbers
+                     d <- satisfy (\char -> char >= '1' && char <= '9')
                      ds <- many (satisfy isDigit) 
-                     return $ negate $ read $ [d] ++ ds)
-      <|> lexeme (do d <- (satisfy (\char -> char >= '1' && char <= '9')) -- handles 0 < 
+                     return $ negate $ read $ d : ds)
+      <|> lexeme (do d <- (satisfy (\char -> char >= '1' && char <= '9'))
                      ds <- many (satisfy isDigit)
-                     return $ read $ [d] ++ ds)
-      <|> lexeme (do _ <- skipMany (satisfy (\c -> c == '-')); d <- string "0"; return $ read $ d)
+                     return $ read $ d : ds)
+      <|> lexeme (do _ <- skipMany (satisfy (== '-')); d <- string "0"
+                     return $ read d)
 
 
 pClausez :: Parser [CClause]
@@ -158,10 +151,10 @@ pCCIf = lexeme $ do _ <- keyword "if"
                     e <- pExpr
                     return $ CCIf e
 
--- and how we do lists
+
 pExprz :: Parser [Exp]
 pExprz = do return []
-            <|> do es <- pExprs; return es
+            <|> do pExprs
 
 -- Containing 1 or more Exps.
 pExprs :: Parser [Exp]
@@ -170,14 +163,6 @@ pExprs = do e <- pExpr
             es <- pExprs
             return (e:es)
             <|> do e1 <- pExpr; return [e1]
-
-
--- pStmts :: Parser [Stmt]
--- pStmts = do sm <- pStmt; return [sm]
---             <|> do sm <- pStmt
---                    symbol ";"
---                    sms <- pStmts
---                    return (sm: sms)
 
 ---------------HELPER FUNCTIONS--------------
 whitespace :: Parser ()
@@ -190,23 +175,10 @@ lexeme p = do a <- p; whitespace; return a
 symbol :: String -> Parser ()
 symbol s = lexeme $ do string s; return ()
 
--- Only matches ' 
-isQuote :: Char -> Bool
-isQuote char = 
-  any (char ==) "'"
------PARSE------
-
-{- parseString :: String -> Either ParseError Program
-parseString = undefined  -- define this -}
 parseString :: String -> Either ParseError Program
-parseString s = case readP_to_S (do whitespace; p <- pProgram; eof; return p) s of
+parseString s = case readP_to_S (do whitespace; p <- pProgram; eof; 
+                                    return p) s of
                     [] -> Left "Cannot parse"
                     [(p, _)] -> Right p
                     _ -> error "Grammar is ambiguous!"
 
-
--- parseString :: String -> Either ParseError Exp
--- parseString s = case readP_to_S (do whitespace; e <- pExpr; eof; return e) s of
---                     [] -> Left "Cannot parse"
---                     [(e, _)] -> Right e
---                     _ -> error "Grammar is ambiguous!"
