@@ -4,12 +4,16 @@ Program ::= Stmts
 Stmts ::= Stmt
         |Stmt ‘;’ Stmts
 
-
 Stmt ::= ident ‘=’ Expr
         |Expr
 
--- Non Left Recursive --
-Expr ::= Term ExprOpt 
+-- Non Left Recursive
+Expr ::= ExprNot
+
+ExprNot ::= 'not' N ExprNot
+          | e
+
+N ::= Term ExprOpt
 
 ExprOpt ::= '==' Term 
           | '!=' Term 
@@ -18,12 +22,12 @@ ExprOpt ::= '==' Term
           | '>' Term  
           | '>=' Term  
           | 'in' Term  
-          | 'not' 'in' Term 
+          | 'not' 'in' Term -- mangler
           | e 
 
 Term ::= Factor TermOpt
 
-TermOpt ::= '+' Factor TermOpt 
+TermOpt ::= '+' Factor TermOpt
           | '-' Factor TermOpt 
           | e
 
@@ -34,15 +38,19 @@ FactorOpt ::= '*' X FactorOpt
                | '%' X FactorOpt 
                | e
 
-X ::= numConst 
-    | stringConst 
+X ::= numConst
+    | stringConst -- Virker dårligt
     | ident 
     | '(' E ')'
-    | 'not' Expr
-    | ident '(' Exprz ')'
-    | ‘[’ Exprz ‘]’
-    | ‘[’ Expr ForClause Clausez ‘]’
-    | 'None' | 'True' | 'False' 
+    | '(' Expr ')'
+    | ident '(' Exprz ')' -- Virker?
+    |‘[’ Exprz ‘]’
+    |‘[’ Expr ForClause Clausez ‘]’
+    | bool
+
+bool ::= 'None'
+    | 'True'
+    | 'False' 
 
 ForClause ::= ‘for’ ident ‘in’ Expr
 
@@ -52,9 +60,9 @@ Clausez ::= e
           | ForClause Clausez
           | IfClause Clausez
 Exprz ::= e
-        | Exprs
+        |Exprs
 Exprs ::= Expr
-        | Expr ‘,’ Exprs
+        |Expr ‘,’ Exprs
 
 ident ::= (see text)
 numConst ::= (see text)
