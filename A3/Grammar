@@ -3,11 +3,17 @@ Program ::= Stmts
 
 Stmts ::= Stmt
         |Stmt ‘;’ Stmts
+
 Stmt ::= ident ‘=’ Expr
         |Expr
 
--- Non Left Recursive --
-Expr ::= Term ExprOpt 
+-- Non Left Recursive
+Expr ::= ExprNot
+
+ExprNot ::= 'not' N ExprNot
+          | e
+
+N ::= Term ExprOpt
 
 ExprOpt ::= '==' Term 
           | '!=' Term 
@@ -16,13 +22,12 @@ ExprOpt ::= '==' Term
           | '>' Term  
           | '>=' Term  
           | 'in' Term  
-          | 'not' Term -- mangler
           | 'not' 'in' Term -- mangler
           | e 
 
 Term ::= Factor TermOpt
 
-TermOpt ::= '+' Factor TermOpt -- x+y-z virker ikke
+TermOpt ::= '+' Factor TermOpt
           | '-' Factor TermOpt 
           | e
 
@@ -33,12 +38,12 @@ FactorOpt ::= '*' X FactorOpt
                | '%' X FactorOpt 
                | e
 
-X ::= numConst -- "-0" virker ikke
+X ::= numConst
     | stringConst -- Virker dårligt
     | ident 
     | '(' E ')'
     | '(' Expr ')'
-    | ident '(' Exprz ')' -- Virker nok ikke
+    | ident '(' Exprz ')' -- Virker?
     |‘[’ Exprz ‘]’
     |‘[’ Expr ForClause Clausez ‘]’
     | bool
