@@ -127,7 +127,7 @@ pNum = do _ <- char '0'
                      d <- satisfy (\char -> char >= '1' && char <= '9')
                      ds <- many (satisfy isDigit) 
                      return $ negate $ read $ d : ds)
-      <|> lexeme (do d <- (satisfy (\char -> char >= '1' && char <= '9'))
+      <|> lexeme (do d <- satisfy (\char -> char >= '1' && char <= '9')
                      ds <- many (satisfy isDigit)
                      return $ read $ d : ds)
       <|> lexeme (do _ <- skipMany (satisfy (== '-')); d <- string "0"

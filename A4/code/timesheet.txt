@@ -8,14 +8,14 @@
 #
 # YOUR ANSWERS WILL NOT AFFECT YOUR ASSIGNMENT GRADE.
 #
-Assignment: 3 # do not modify
-Installation: 0m # normally covered under Assignment 1/2; fill in otherwise
-Reading: 3h
-Lectures: 4h
-Exploration: 1h
-Warmup: 4h
-Development: 20h
-Tests: 8h
-Report: 3h
-Other: 1h
+Assignment: 4 # do not modify
+Installation:
+Reading:
+Lectures:
+Exploration:
+Warmup:
+Development:
+Tests:
+Report:
+Other:  # if more than 1h total, please elaborate in comment
 # Thanks!
