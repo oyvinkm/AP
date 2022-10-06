@@ -11,6 +11,7 @@ testsuite() ->
     [ {"Basic behaviour", spawn,
        [ test_start_server()
        , test_shortcode_smiley()
+       , test_alias_happy()
        ]
       }
     ].
@@ -28,3 +29,11 @@ test_shortcode_smiley() ->
        ?assertEqual(ok, emoji:new_shortcode(S, "smiley",
                                             <<240,159,152,131>>))
      end }.
+test_alias_happy() -> 
+  {"Register new alias",
+  fun() -> 
+    {ok, S} = emoji:start([]),
+    ok = emoji:new_shortcode(S, "smiley",
+                            <<240,159,152,131>>),
+    ?assertEqual(ok, emoji:alias(S, "smiley", "happy"))
+    end}.

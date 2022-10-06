@@ -1,0 +1,22 @@
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", 1).
+emoji:analytics(E, "smiley", fun(_, N) -> N+1 end, "Counter", 0).
+emoji:analytics(E, "smiley", fun emoji:accessed/2, "Accessed", []).
+emoji:lookup(E, "smiley").
+emoji:lookup(E, "smiley").
+emoji:get_analytics(E, "smiley").
+emoji:remove_analytics(E, "smiley", "Counter").
+emoji:get_analytics(E, "smiley").
+
+
+c(emoji).
+{ok, E} = emoji:start([{"smiley", 1}]).
+
+
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", 1).
+emoji:alias(E, "smiley", "happy").
+emoji:lookup(E, "smiley").
+emoji:lookup(E, "happy").
