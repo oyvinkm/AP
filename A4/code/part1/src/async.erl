@@ -2,21 +2,30 @@
 
 -export([new/2, loop/2, wait/1, poll/1, send/2]).
 
-        % try Monitor ! {result, Fun(Arg)} 
-        % catch
-        %     _ : Ex -> Monitor ! {exception, Ex}
-        % end).
+        
 
 % Worker processs / Moderator process 
+    % spawn(fun() -> Monitor ! {result, Fun(Arg)} end),
 
 
-new(Fun, Arg) -> % Spawns worker and monitor, sends answer from
-% The initial state should be nothing such that poll returns nothing, 
-% The list contains all the receivers missing answer
+new(Fun, Arg) -> 
+    % The initial state should be nothing such that poll returns nothing, 
+    % The list contains all the receivers missing answer
+
     Monitor = spawn(fun() -> loop(nothing, []) end), 
-% Sends a result to the monitor as soon it's done
-    spawn(fun() -> Monitor ! {result, Fun(Arg)} end),
-    Monitor. % We want to communicate with the monitor from the terminal
+    spawn(fun() -> 
+            try Fun(Arg) of 
+                Res -> Monitor ! {result, {ok, Res}}
+            catch
+                _ : Ex -> Monitor ! {exception, {exception, Ex}}
+            end
+          end ),
+    Monitor. 
+
+        % Monitor ! {result, Fun(Arg)} end),
+
+    % Sends a result to the monitor as soon it's done
+    % We want to communicate with the monitor from the terminal
 
 % Basic request reply
 request_reply(Request, Aid) ->
@@ -39,8 +48,9 @@ send(Res, Lst) ->
 
 loop(State, Lst) ->
     receive 
-        % {err, Ex} -> 
-        %     {Ex, this_is_an_exception};
+        {exception, Ex} -> 
+            spawn(fun() -> send(Ex , Lst) end),
+            loop(Ex, []);
 
         {result, Res} -> 
             spawn(fun() -> send(Res, Lst) end), % When ever we get a result we send it to everyone
@@ -58,10 +68,9 @@ loop(State, Lst) ->
                 _ -> From ! {State}, % If we have an answer we send that directly
                      loop(State, Lst) % We redo the loop if 
             end
-
     end.
 
-
-
+% async:new(fun(X) -> X / 0 end, 4).
+% async:new(fun(X) -> timer:sleep(X) end, 5000).
 
 % Monitor waits from the result from worker.
