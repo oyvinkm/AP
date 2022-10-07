@@ -165,26 +165,32 @@ loop(Pair_of_lsts) ->
             end);
         % Attaches a analytics to the label
         {{analytics, Short, Fun, Label, Init}, From} ->
-            case lists:keyfind(Short, 1, element(1, Pair_of_lsts)) of
-                false -> case lists:keyfind(Short, 1, element(2, Pair_of_lsts)) of
-                    {_, RefShort} -> 
-                        E = self(), 
-                            spawn(fun() -> E ! {{analytics, RefShort, Fun, Label, Init}, From} end),
-                            loop(Pair_of_lsts);
-                        false -> From ! {{error, "Short does not exist, nor as an alias."}},
-                                 loop(Pair_of_lsts)
-
-                         end;
-                {Short, Emo, Analytics} -> case lists:member(Label, [Ele || {Ele, _, _} <- Analytics]) of
-                                                true -> From ! {{error, "Label already exists."}},
-                                                        loop(Pair_of_lsts);
-                                                false -> Anal = Analytics ++ [{Label, Fun, Init}],
-                                                         Temp_Lst = lists:keydelete(Short, 1, element(1, Pair_of_lsts)),
-                                                         New_Lst = Temp_Lst ++ [{Short, Emo, Anal}],
-                                                         From ! {ok},
-                                                         loop({New_Lst, element(2, Pair_of_lsts)})                            
-                                           end
+            try eval_fun(Short, {Label, Fun, Init}) of
+                        _ -> case lists:keyfind(Short, 1, element(1, Pair_of_lsts)) of
+                                false -> case lists:keyfind(Short, 1, element(2, Pair_of_lsts)) of
+                                    {_, RefShort} -> 
+                                        E = self(), 
+                                            spawn(fun() -> E ! {{analytics, RefShort, Fun, Label, Init}, From} end),
+                                            loop(Pair_of_lsts);
+                                        false -> From ! {{error, "Short does not exist, nor as an alias."}},
+                                                 loop(Pair_of_lsts)
+                                            end;
+                                {Short, Emo, Analytics} -> case lists:member(Label, [Ele || {Ele, _, _} <- Analytics]) of
+                                                                true -> From ! {{error, "Label already exists."}},
+                                                                        loop(Pair_of_lsts);
+                                                                false -> Anal = Analytics ++ [{Label, Fun, Init}],
+                                                                         Temp_Lst = lists:keydelete(Short, 1, element(1, Pair_of_lsts)),
+                                                                         New_Lst = Temp_Lst ++ [{Short, Emo, Anal}],
+                                                                         From ! {ok},
+                                                                         loop({New_Lst, element(2, Pair_of_lsts)})                            
+                                                                end
+                                end
+            catch
+                _ : _ -> 
+                    From ! {{error, bad_fun}},
+                    loop(Pair_of_lsts)
             end;
+            
 
         {{get_analytics, Short}, From} -> 
             case lists:keyfind(Short, 1, element(1, Pair_of_lsts)) of
