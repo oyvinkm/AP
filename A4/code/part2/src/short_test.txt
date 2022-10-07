@@ -20,3 +20,8 @@ emoji:new_shortcode(E, "smiley", 1).
 emoji:alias(E, "smiley", "happy").
 emoji:lookup(E, "smiley").
 emoji:lookup(E, "happy").
+
+c('src/emojo').
+c('tests/someemoji').
+c('tests/test_emoji').
+test_emoji:test_all().

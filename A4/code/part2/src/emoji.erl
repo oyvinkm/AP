@@ -100,7 +100,7 @@ loop(Pair_of_lsts) ->
                         loop(Pair_of_lsts);
                 false -> NewLst =  {element(1, Pair_of_lsts) ++ [{Short, Emo, []}], 
                         element(2, Pair_of_lsts)},
-                         From ! {{ok, NewLst}},
+                         From ! {ok},
                          loop(NewLst)
             end;
         %Do this later
@@ -113,7 +113,7 @@ loop(Pair_of_lsts) ->
             Alias_filtered = filter(fun(X) ->
                 remove_if_second(Short, X) end, Alias),
 
-            From ! {{ok, {Prim_filtered, Alias_filtered}}},
+            From ! {ok},
             loop({Prim_filtered, Alias_filtered});
 
         {{lookup, Short}, From} ->
@@ -124,7 +124,7 @@ loop(Pair_of_lsts) ->
                     Temp_Lst = lists:keydelete(NewShort, 1, element(1, Pair_of_lsts)),
                     NewLst = {Temp_Lst ++ [{NewShort, Emo, Anal}], 
                         element(2, Pair_of_lsts)},
-                    From ! {{ok, NewLst}},
+                    From ! {{ok, Emo}},
                        loop(NewLst);
                 false -> 
                     % looks for Short, in first element of tuple in second element of Pair_of_lsts
@@ -167,7 +167,7 @@ loop(Pair_of_lsts) ->
                                                 false -> Anal = Analytics ++ [{Label, Fun, Init}],
                                                          Temp_Lst = lists:keydelete(Short, 1, element(1, Pair_of_lsts)),
                                                          New_Lst = Temp_Lst ++ [{Short, Emo, Anal}],
-                                                         From ! {{ok, {New_Lst, element(2, Pair_of_lsts)}}},
+                                                         From ! {ok},
                                                          loop({New_Lst, element(2, Pair_of_lsts)})                            
                                            end
             end;
@@ -189,13 +189,12 @@ loop(Pair_of_lsts) ->
             end;
 
         {{remove_analytics, Short, Label}, From} ->
-            Me = self(),
             case lists:keyfind(Short, 1, element(1, Pair_of_lsts)) of
                 {Short, Emo, Analytics} -> 
                     Anal = lists:keydelete(Label, 1, Analytics),
                     Temp_Lst = lists:keydelete(Short, 1, element(1, Pair_of_lsts)),
                     New_Lst = Temp_Lst ++ [{Short, Emo, Anal}], 
-                    From ! {{ok, {New_Lst, element(2, Pair_of_lsts)}}},
+                    From ! {ok},
                     loop({New_Lst, element(2, Pair_of_lsts)});
 
                 false -> 
@@ -223,7 +222,7 @@ loop(Pair_of_lsts) ->
                     true -> case lists:keymember(Short2, 1, element(2, Pair_of_lsts)) of
                                 true -> From ! {{error, "Alias already exists."}};
                                 false -> NewLst =  {element(1, Pair_of_lsts), element(2, Pair_of_lsts) ++ [{Short2, Short1}]},
-                                        From ! {{ok, NewLst}},
+                                        From ! {ok},
                                         loop(NewLst)
                             end
                 end
