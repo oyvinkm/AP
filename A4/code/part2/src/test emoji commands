@@ -49,6 +49,16 @@ emoji:alias(E, "poop", "hankey").
 emoji:delete(E, "poop").
 emoji:lookup(E, "hankey").
 
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", <<"\xF0\x9F\x92\xA9">>).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+
+emoji:lookup(E, "poop").
+emoji:alias(E, "poop", "hankey").
+emoji:delete(E, "hankey").
+emoji:lookup(E, "poop").
+
 
 newshortcode("smiley", <<x, y, z>>)
 alias("smiley", "sad")
@@ -70,8 +80,6 @@ c(emoji).
 emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
 emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
 emoji:alias(E, "poop", "hankey").
-emoji:analytics(E, "hankey", (fun(X) -> X + 1 end), "Counter", 0).
-emoji:analytics(E, "smiley", (fun(X) -> X + 1 end), "Counter", 0).
 emoji:get_analytics(E, "smiley").
 emoji:get_analytics(E, "hankey").
 
@@ -84,6 +92,7 @@ c(emoji).
 {ok, E} = emoji:start([]).
 emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
 emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:analytics(E, "poop", fun emoji:accessed/2, "Accessed", []).
 emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA8">>).
 emoji:alias(E, "poop", "hankey").
 emoji:alias(E, "poop", "hankey1").
@@ -96,3 +105,16 @@ emoji:alias(E, "poop", "hankey2").
 emoji:alias(E, "poop", "hankey3").
 emoji:delete(E, "poop").
 emoji:lookup(E, "hankey").
+
+
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:analytics(E, "poop", fun emoji:accessed/2, "Accessed", []).
+emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA8">>).
+emoji:lookup(E, "poop").
+emoji:alias(E, "poop", "hankey").
+emoji:alias(E, "poop", "hankey1").
+emoji:delete(E, "hankey").
+emoji:lookup(E, "poop").

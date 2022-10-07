@@ -103,8 +103,10 @@ loop(Pair_of_lsts) ->
                          From ! {ok},
                          loop(NewLst)
             end;
-        %Do this later
+        %Deletes entry if Short is the Short of the primary list or
+        % If Short is Short2 in the secondary list
         {{delete, Short}, From} ->
+            E = self(),
             Primary = element(1, Pair_of_lsts),
             Prim_filtered = filter(fun(X) -> 
                 remove_if_first(Short, X) end, Primary),
@@ -113,8 +115,20 @@ loop(Pair_of_lsts) ->
             Alias_filtered = filter(fun(X) ->
                 remove_if_second(Short, X) end, Alias),
 
-            From ! {ok},
-            loop({Prim_filtered, Alias_filtered});
+            %Finds the one element in the original list, and deletes that
+            %entry
+            Filtered = {Prim_filtered, Alias_filtered},
+            case lists:keyfind(Short, 1, element(2, Filtered)) of
+                        {_, RefShort} ->
+                            spawn(fun() -> E ! {{delete, RefShort}, From} end),
+                            loop(Filtered);
+                        false -> 
+                            From ! {{ok, {Prim_filtered, Alias_filtered}}},
+                            loop({Prim_filtered, Alias_filtered})
+                end;
+            
+
+
 
         {{lookup, Short}, From} ->
             % From ! {{check_input, Pair_of_lsts}},
