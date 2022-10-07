@@ -1,9 +1,10 @@
 -module(emoji).
 
--export([start/1, new_shortcode/3, alias/3, delete/2, lookup/2,
-         analytics/5, get_analytics/2, remove_analytics/3,
-         stop/1, loop/1, hit/2, accessed/2, eval_fun/2, map/2]).
+% -export([start/1, new_shortcode/3, alias/3, delete/2, lookup/2,
+%          analytics/5, get_analytics/2, remove_analytics/3,
+%          stop/1, loop/1, hit/2, accessed/2, eval_fun/2, map/2]).
 
+-compile(export_all).
 
 -type shortcode() :: string().
 -type emoji() :: binary().
@@ -70,6 +71,20 @@ findEmo({Short, List}) ->
                                    NewLst
     end.
 
+filter(Pred, L) -> lists:reverse(filter(Pred, L,[])).
+filter(_, [], Acc) -> Acc;
+filter(Pred, [H|T], Acc) ->
+    case Pred(H) of
+        true -> filter(Pred, T, [H|Acc]);
+        false -> filter(Pred, T, Acc)
+    end.
+remove_if_first(Pred, {First, _}) ->
+    Pred =/= First.
+
+remove_if_second(Pred, {_, Second}) ->
+    Pred =/= Second.
+
+
 loop(Lst_of_pairs) -> 
     receive
         {{new_shortcode, Short, Emo}, From} ->
@@ -84,12 +99,20 @@ loop(Lst_of_pairs) ->
             end;
         %Do this later
         {{delete, Short}, From} ->
-            New_lst = lists:keydelete(Short, 1, Lst_of_pairs),
-            From ! {ok},
-            loop(New_lst);
+            Primary = element(1, Lst_of_pairs),
+            Prim_filtered = filter(fun(X) -> 
+                remove_if_first(Short, X) end, Primary),
+            From ! {{ok, Prim_filtered}},
+            loop(Prim_filtered); % should also contains other list
+            % Alias = element(2, Lst_of_pairs);
+        % {{olddelete, Short}, From} ->
+        %     New_lst = lists:keydelete(Short, 1, Lst_of_pairs),
+        %     case lists:keyfind(Short, 2, element(2, Lst_of_pairs)) of
+
+        %     From ! {ok},
+        %     loop(New_lst);
 
         {{lookup, Short}, From} ->
-            E = self(),
             case lists:keyfind(Short, 1, element(1,Lst_of_pairs)) of
                 {NewShort, Emo, Analytics} -> Anal = [eval_fun(Emo, X) || X <- Analytics],
                                            Temp_Lst = lists:keydelete(NewShort, 1, element(1, Lst_of_pairs)),
@@ -98,12 +121,11 @@ loop(Lst_of_pairs) ->
                                            From ! {{ok, Emo}},
                                            loop(NewLst);
                 false -> 
+                    % looks for Short, in first element of tuple in second element of Lst_of_pairs
                     case lists:keyfind(Short, 1, element(2, Lst_of_pairs)) of
-                        {Alias, RefShort} -> 
-                            %It hangs here, not sure if it is because 
-                            % I can't call request_reply in here. 
-                            % Maybe spawn a new function. 
-                            lookup(E, RefShort),
+                        {Alias, RefShort} ->
+                            E = self(), 
+                            spawn(fun() -> E ! {{lookup, RefShort}, From} end),
                             loop(Lst_of_pairs);
                         false -> 
                             From ! {{error, no_emoji}},
