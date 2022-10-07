@@ -20,10 +20,16 @@ accessed(SC, TS) ->
 
 start(Initial) -> 
     case length(Initial) == length(lists:ukeysort(1, Initial)) of
-        true -> Init = {Initial, []}, 
-            E = spawn(fun() -> loop(Init) end),
-                  {ok, E};
-        false -> {error, reasons}
+        false -> {error, reasons};
+        true -> case length(Initial) > 0 of
+                    true -> Temp = [{Short, Emo, []} || {Short, Emo} <- Initial],
+                            Init = {Temp, []}, 
+                            E = spawn(fun() -> loop(Init) end),
+                            {ok, E};
+                    false -> Init = {Initial, []}, 
+                             E = spawn(fun() -> loop(Init) end),
+                             {ok, E}    
+                end
     end.
 
 
@@ -36,8 +42,6 @@ request_reply(Request, Pid) ->
 
 % append the emoji to the list in E.
 new_shortcode(E, Short, Emo) -> request_reply({new_shortcode, Short, Emo}, E).
-
-% yeet(E) -> request_reply(yeet, E).
 
 alias(E, Short1, Short2) -> request_reply({alias, Short1, Short2}, E).
 
@@ -65,7 +69,7 @@ eval_fun(Emo, {Label, F, State}) ->
 %[{Short , Emo, [{Label, Fun, State}]}]
 findEmo({Short, List}) ->
     case lists:keymember(Short, 1, List) of
-        {Short, Emo, Analytics} -> Anal = [eval_fun(Emo, X) || X <- Analytics],
+        {Short, Emo, Analytics} -> Anal = [eval_fun(Emo, X) || X <- Analytics],
                                    Temp_Lst = lists:keydelete(Short, 1, List),
                                    NewLst = (Temp_Lst ++ [{Short, Emo, Anal}]),
                                    NewLst
@@ -78,7 +82,9 @@ filter(Pred, [H|T], Acc) ->
         true -> filter(Pred, T, [H|Acc]);
         false -> filter(Pred, T, Acc)
     end.
-remove_if_first(Pred, {First, _}) ->
+
+% Third argu,emt 
+remove_if_first(Pred, {First, _, _}) ->
     Pred =/= First.
 
 remove_if_second(Pred, {_, Second}) ->
@@ -102,23 +108,22 @@ loop(Lst_of_pairs) ->
             Primary = element(1, Lst_of_pairs),
             Prim_filtered = filter(fun(X) -> 
                 remove_if_first(Short, X) end, Primary),
-            From ! {{ok, Prim_filtered}},
-            loop(Prim_filtered); % should also contains other list
-            % Alias = element(2, Lst_of_pairs);
-        % {{olddelete, Short}, From} ->
-        %     New_lst = lists:keydelete(Short, 1, Lst_of_pairs),
-        %     case lists:keyfind(Short, 2, element(2, Lst_of_pairs)) of
 
-        %     From ! {ok},
-        %     loop(New_lst);
+            Alias = element(2, Lst_of_pairs),
+            Alias_filtered = filter(fun(X) ->
+                remove_if_second(Short, X) end, Alias),
+
+            From ! {ok},
+            loop({Prim_filtered, Alias_filtered});
 
         {{lookup, Short}, From} ->
+            From ! {{check_input, Lst_of_pairs}},
             case lists:keyfind(Short, 1, element(1,Lst_of_pairs)) of
-                {NewShort, Emo, Analytics} -> Anal = [eval_fun(Emo, X) || X <- Analytics],
+                {NewShort, Emo, Analytics} -> Anal = [eval_fun(Emo, X) || X <- Analytics],
                                            Temp_Lst = lists:keydelete(NewShort, 1, element(1, Lst_of_pairs)),
-                                           NewLst = {Temp_Lst ++ Anal, 
+                                           NewLst = {Temp_Lst ++ [{NewShort, Emo, Anal}], 
                                            element(2, Lst_of_pairs)},
-                                           From ! {{ok, Emo}},
+                                           From ! {{ok, NewLst}},
                                            loop(NewLst);
                 false -> 
                     % looks for Short, in first element of tuple in second element of Lst_of_pairs
@@ -143,27 +148,63 @@ loop(Lst_of_pairs) ->
                     _ : _ -> From ! {{error, "did not work"}}
                 end
             end);
+        % Attaches a analytics to the label
         {{analytics, Short, Fun, Label, Init}, From} ->
-            case lists:keyfind(Short, 1, Lst_of_pairs) of
-                false -> From ! {{error, "Short does not exist"}};
+            case lists:keyfind(Short, 1, element(1, Lst_of_pairs)) of
+                false -> case lists:keyfind(Short, 1, element(2, Lst_of_pairs)) of
+                    {Alias, RefShort} -> 
+                        E = self(), 
+                            spawn(fun() -> E ! {{analytics, RefShort, Fun, Label, Init}, From} end),
+                            loop(Lst_of_pairs);
+                        false -> From ! {{error, "Short does not exist, nor as an alias."}},
+                                 loop(Lst_of_pairs)
+
+                         end;
                 {Short, Emo, Analytics} -> case lists:member(Label, [Ele || {Ele, _, _} <- Analytics]) of
                                                 true -> From ! {{error, "Label already exists."}},
                                                         loop(Lst_of_pairs);
                                                 false -> Anal = Analytics ++ [{Label, Fun, Init}],
-                                                         From ! {ok},
-                                                         Temp_Lst = lists:keydelete(Short, 1, Lst_of_pairs),
+                                                         Temp_Lst = lists:keydelete(Short, 1, element(1, Lst_of_pairs)),
                                                          New_Lst = Temp_Lst ++ [{Short, Emo, Anal}],
-                                                         loop(New_Lst)                            
+                                                         From ! {{ok, {New_Lst, element(2, Lst_of_pairs)}}},
+                                                         loop({New_Lst, element(2, Lst_of_pairs)})                            
                                            end
             end;
+
         {{get_analytics, Short}, From} -> 
-            case lists:keyfind(Short, 1, Lst_of_pairs) of
-                false -> From ! ({{error, "Short does not exist."}}),
-                         loop(Lst_of_pairs);
-                {_, _, Analytics} ->  Anal = [{Label, Stats} || {Label,_,Stats} <- Analytics],
+            case lists:keyfind(Short, 1, element(1, Lst_of_pairs)) of
+                {_, _, Analytics} ->  Anal = [{Label, Stats} || {Label,_,Stats} <- Analytics],
                                             From ! {{ok, Anal}},
-                                            loop(Lst_of_pairs)
+                                            loop(Lst_of_pairs);
+                false -> case lists:keyfind(Short, 1, element(2, Lst_of_pairs)) of
+                                {_, RefShort} -> %{Alias, RefShort}
+                                    E = self(), 
+                                        spawn(fun() -> E ! {{get_analytics, RefShort}, From} end),
+                                        loop(Lst_of_pairs);
+                                false -> 
+                                    From ! ({{error, "Short does not exist, nor as an alias."}}),
+                                    loop(Lst_of_pairs)
+                         end
             end;
+        {{alias, Short1, Short2}, From} -> 
+                case lists:keymember(Short1, 1, element(1, Lst_of_pairs)) of
+                    false ->  case lists:keyfind(Short1, 1, element(2, Lst_of_pairs)) of
+                                {Alias, RefShort} ->
+                                    E = self(), 
+                                    spawn(fun() -> E ! {{alias, RefShort, Short2}, From} end),
+                                    loop(Lst_of_pairs);
+                                false -> 
+                                    From ! {{error, "Short1 does not exists."}},
+                                    loop(Lst_of_pairs)
+                             end;
+                    true -> case lists:keymember(Short2, 1, element(2, Lst_of_pairs)) of
+                                true -> From ! {{error, "Alias already exists."}};
+                                false -> NewLst =  {element(1, Lst_of_pairs), element(2, Lst_of_pairs) ++ [{Short2, Short1}]},
+                                        From ! {{ok, NewLst}},
+                                        loop(NewLst)
+                            end
+                end;
+
         {{remove_analytics, Short, Label}, From} ->
             Me = self(),
             spawn(fun() -> 
@@ -179,18 +220,7 @@ loop(Lst_of_pairs) ->
                 {Lst} ->                                    
                     From ! {{ok}},
                     loop(Lst)
-                end;
-        {{alias, Short1, Short2}, From} -> 
-                case lists:keymember(Short1, 1, element(1, Lst_of_pairs)) of
-                    false -> From ! {{error, "Short1 does not exists."}},
-                             loop(Lst_of_pairs);
-                    true -> case lists:keymember(Short2, 1, element(2, Lst_of_pairs)) of
-                                true -> From ! {{error, "Alias already exists."}};
-                                false -> NewLst =  {element(1, Lst_of_pairs), element(2, Lst_of_pairs) ++ [{Short2, Short1}]},
-                                        From ! {{ok, NewLst}},
-                                        loop(NewLst)
-                            end
-                end 
+                end
     end.
 
 % c(emoji).

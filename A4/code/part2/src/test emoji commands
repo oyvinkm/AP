@@ -1,5 +1,13 @@
 c(emoji).
 {ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:alias(E, "poop", "hankey").
+emoji:lookup(E, "hankey").
+emoji:analytics(E, "hankey", (fun(X) -> X + 1 end), "Counter", 0).
+emoji:lookup(E, "poop").
+
+c(emoji).
+{ok, E} = emoji:start([]).
 emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
 emoji:lookup(E, "smiley").
 emoji:delete(E, "smiley").
@@ -10,16 +18,56 @@ c(emoji).
 {ok, E} = emoji:start([]).
 emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
 emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
-emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA9">>).
-emoji:delete(E, "delete",).
+emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA8">>).
 emoji:alias(E, "poop", "hankey").
+emoji:alias(E, "poop", "hankey").
+emoji:delete(E, "poop").
 emoji:lookup(E, "hankey").
 
 
+newshortcode("smiley", <<x, y, z>>)
+alias("smiley", "sad")
+alias("sad", "happy")
+
+smiley : <<x,y,z>>
+
+sad : smiley
+happy : smiley
 
 
-
-A = [{1, "a"}, {2, "a"}, {3, "b"}].
+A = [{1, "a", []}, {2, "a",[]}, {3, "b",[]}].
 B = emoji:filter(fun(X) -> emoji:remove_if_second("a", X) end, A).
 
+------------Analytics test--------------
+erl
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:alias(E, "poop", "hankey").
+emoji:analytics(E, "hankey", (fun(X) -> X + 1 end), "Counter", 0).
+emoji:analytics(E, "smiley", (fun(X) -> X + 1 end), "Counter", 0).
+emoji:get_analytics(E, "smiley").
+emoji:get_analytics(E, "hankey").
 
+
+emoji:analytics(E, "hankey", fun hit/2, "Counter", 0).
+
+
+This Fails:
+c(emoji).
+{ok, E} = emoji:start([]).
+emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA8">>).
+emoji:alias(E, "poop", "hankey").
+emoji:alias(E, "poop", "hankey1").
+emoji:delete(E, "poop").
+emoji:lookup(E, "hankey").
+emoji:new_shortcode(E, "smiley", <<240,159,152,131>>).
+emoji:new_shortcode(E, "poop", <<"\xF0\x9F\x92\xA9">>).
+emoji:new_shortcode(E, "delete", <<"\xF0\x9F\x92\xA8">>).
+emoji:alias(E, "poop", "hankey2").
+emoji:alias(E, "poop", "hankey3").
+emoji:delete(E, "poop").
+emoji:lookup(E, "hankey").
