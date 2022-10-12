@@ -15,28 +15,33 @@ opN :: Gen Op
 opN = elements [Plus, Minus, Times]
 
 identN :: Gen String
-identN = elements ["ThisShouldBeAnUnboundVariable"]
+identN = elements ["a", "b", "c"]
+
+genList :: Gen String
+genList = do 
+     n <- chooseInt(1,2)
+     str <- vectorOf n (elements ['A' .. 'Z'])
+     return $ str
 
 
 
-exprN :: Int -> Gen Expr
-exprN 0 = fmap Const arbitrary
-exprN n = oneof
-   [fmap Const arbitrary
-   , do x <- exprN (n `div` 2)
-        y <- exprN (n `div` 2)
-        op <- opN
-        return $ Oper op x y
-   , do ident <- identN
-        return (Var ident)
-   , do e1 <- exprN (n `div` 2)
-        e2 <- exprN (n `div` 2)
-        ident <- identN
-        return $ Let ident e1 e2
+exprN :: [String] -> Int -> Gen Expr
+exprN _ 0 = fmap Const arbitrary
+exprN xs n = frequency[(2, fmap Const arbitrary)
+   , (3, do x <- exprN xs (n `div` 2)
+            y <- exprN xs (n `div` 2)
+            op <- opN
+            return $ Oper op x y)
+   , (1, do ident <- elements xs
+            return (Var ident))
+   , (2, do ident <- genList 
+            e1 <- exprN (xs ++ [ident]) (n `div` 2)
+            e2 <- exprN (xs ++ [ident]) (n `div` 2)
+            return $ Let ident e1 e2)
    ]
 
 instance Arbitrary Expr where
-   arbitrary = sized exprN
+   arbitrary =  sized (exprN ["A"])
 
 prop_eval_simplify :: Expr -> Property
 prop_eval_simplify x = (E.evalTop (E.simplify x)) === (E.evalTop x)

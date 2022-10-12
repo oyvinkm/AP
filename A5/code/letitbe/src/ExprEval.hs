@@ -23,6 +23,15 @@ eval (Let v e body) env = do
 
 evalTop e = eval e M.empty
 
+contains :: Ident -> Expr -> Bool -> Bool
+contains v body b = 
+  case body of
+    Oper _ (Const _) (Const _) -> False
+    Var v -> True  
+    Oper op e1 e2 -> (contains v e1 b) || (contains v e2 b)
+    Let x e body -> contains v body b
+    _ -> False
+
 simplify e =
   case e of
     Oper Plus (Const c1) (Const c2) -> Const(c1+c2)
@@ -35,10 +44,11 @@ simplify e =
 
     Oper Times (Const c1) (Const (-1)) -> Const (-c1)
     Oper Times (Const (-1)) (Const c2) -> Const (-c2)
-    
+    Var v -> Var v
     Oper Times (Const c1) (Const c2) -> Const(c1*c2)
 
     Oper op e1 e2 -> Oper op (simplify e1) (simplify e2)
-    Let v e body ->
-      Let v (simplify e) (simplify body)
+    Let v e body -> case contains v body False of
+                      False -> simplify body
+                      True -> Let v (simplify e) (simplify body)
     _ -> e
