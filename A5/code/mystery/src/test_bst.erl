@@ -36,10 +36,23 @@ prop_insert_valid() ->
     ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
             valid (insert(K, V, T))).
 
+% If we check if a valid tree is empty is it still valid? 
+prop_empty_valid() -> 
+    ?FORALL({_, _, _}, {atom_key(), int_value(), bst(atom_key(), int_value())},
+            valid(empty())).
+
+%If we delete a node in a tree is it still valid? 
+prop_delete_valid() ->
+    ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
+            valid (delete(K,T))).
+
+%If we take union of a branch and 
+prop_union_valid() ->
+    ?FORALL({T1, T2}, {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
+            valid (union(T1, T2))).
 
 
 %%% -- postcondition properties
-
 prop_insert_post() ->
     ?FORALL({K1, K2, V, T},
             {atom_key(), atom_key(), int_value(), bst(atom_key(), int_value())},
@@ -49,6 +62,20 @@ prop_insert_post() ->
                            false -> find(K2, T)
                        end)).
 
+prop_delete_post() -> 
+    ?FORALL({K1, K2, T},
+            {atom_key(), atom_key(), bst(atom_key(), int_value())},
+            eqc:equals(find(K2, delete(K1, T)),
+                        case K1 =:= K2 of
+                            true -> nothing;
+                            false -> find(K2, T)
+                        end)).
+% Maybe this is metamorphism idk. 
+prop_union_post() -> 
+    ?FORALL({K, V, T1, T2}, 
+        {atom_key(), int_value(), bst(atom_key(), int_value()),
+        bst(atom_key(), int_value())},
+        eqc:equals(find(K, union(insert(K,V,T1),T2)), find(K, insert(K, V, T1)))).
 
 prop_find_post_present() ->
   % ∀ k v t. find k (insert k v t) === {found, v}
@@ -57,8 +84,11 @@ prop_find_post_present() ->
                        {found, V})).
 
 
-prop_find_post_absent() -> true.
+prop_find_post_absent() -> 
      % ∀ k t. find k (delete k t) === nothing
+    ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
+            eqc:equals(find(K, delete(K, T)),
+                       nothing)).
 
 
 %%% -- metamorphic properties
@@ -69,7 +99,14 @@ prop_size_insert() ->
     ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
             bst:size(insert(K, V, T)) >= bst:size(T)).
 
+prop_size_delete() -> 
+    ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
+            bst:size(delete(K, T)) =< bst:size(T)).
 
+prop_size_union() -> 
+    ?FORALL({T1,T2}, {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
+            (bst:size(union(T1, T2)) >= bst:size(T1)) and 
+            (bst:size(union(T1, T2)) >= bst:size(T2))).
 
 obs_equals(T1, T2) ->
      eqc:equals(to_sorted_list(T1), to_sorted_list(T2)).
@@ -84,7 +121,15 @@ prop_insert_insert() ->
                            false -> insert(K2, V2, insert(K1, V1, T))
                        end)).
 
-
+prop_delete_delete() -> 
+?FORALL({K1, K2, T}, {atom_key(), atom_key(), 
+        bst(atom_key(), int_value())},
+        obs_equals(delete(K1, delete(K2, T)), 
+                    case K1 =:= K2 of
+                        true -> delete(K1, T);
+                        false -> delete(K2, delete(K1, T))
+                    end)).
+        
 %%% -- Model based properties
 model(T) -> to_sorted_list(T).
 
@@ -94,6 +139,10 @@ prop_insert_model() ->
             equals(model(insert(K, V, T)),
                    sorted_insert(K, V, delete_key(K, model(T))))).
 
+prop_delete_model() -> 
+    ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
+            equals(model(delete(K, T)),
+                    delete_key(K, sorted_insert(K, V ,model(T))))).
 
 -spec delete_key(Key, [{Key, Value}]) -> [{Key, Value}].
 delete_key(Key, KVS) -> [ {K, V} || {K, V} <- KVS, K =/= Key ].
@@ -106,3 +155,4 @@ sorted_insert(Key, Value, KVS) -> [{Key, Value} | KVS].
 
 
 %% -- Test all properties in the module: eqc:module(test_bst)
+
