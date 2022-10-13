@@ -192,7 +192,13 @@ prop_delete_union() ->
 prop_union_insert() ->
     ?FORALL({K, V, T1, T2},
         {atom_key(), int_value(), bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-        obs_equals(union(insert(K, V, T1), insert(K, V, T2)), insert (K, V, union(T1, T2)))).
+        obs_equals(
+            eval({call, bst, union, 
+                [{call, bst, insert, [K, V, T1]}, 
+                {call, bst, insert, [K, V, T2]}]}), 
+            eval({call, bst, insert, 
+                [K, V, 
+                {call, bst, union, [T1, T2]}]}))).
 
 prop_union_union() ->
     ?FORALL({T1, T2},
