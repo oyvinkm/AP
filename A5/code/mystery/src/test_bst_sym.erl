@@ -1,4 +1,4 @@
--module(test_bst).
+-module(test_bst_sym).
 
 -import(bst, [empty/0, insert/3, delete/2, find/2, union/2]).
 -import(bst, [valid/1, to_sorted_list/1, keys/1]).
@@ -16,6 +16,15 @@ bst(Key, Value) ->
          lists:foldl(fun({K,V}, T) -> insert(K, V, T) end,
                      empty(),
                      KVS)).
+
+bst_sym(Key, Value) ->
+    ?LAZY(
+        ?LET(KVS, eqc_gen:list({Key, Value}),
+            lists:foldl(fun({K,V}, T) -> 
+                {call, bst, insert, [K, V, T]} end),
+                {call, bst, empty, []},
+                KVS)).
+
 
 % example key and value generators
 int_key() -> eqc_gen:int().
@@ -124,7 +133,6 @@ prop_insert_union() ->
         bst(atom_key(), int_value())},
         eqc:equals(find(K, union(insert(K,V,T1),T2)), find(K, insert(K, V, T1)))).
 
-
 % Is this proper
 prop_insert_delete() ->
     ?FORALL({K, V, T},
@@ -212,5 +220,12 @@ sorted_find(Key, KVS) -> case lists:keyfind(Key, 1, KVS) of
 sorted_union(KVS1, KVS2) -> lists:ukeymerge(1, KVS1, KVS2).
 %% -- Test all properties in the module: eqc:module(test_bst)
 
+
+% dict_1() ->
+%     ?LAZY(
+%         oneof([{call,dict,new,[]},
+%             ?LET(D, dict_1(),
+%             {call,dict,store,[key(),value(),D]})])
+%         ).
 
 % model(union(kvs1, kvs2)) == sorted_union(model(kvs1), model(kvs2))
