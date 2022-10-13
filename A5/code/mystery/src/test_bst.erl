@@ -163,6 +163,12 @@ prop_union_union() ->
         {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
         obs_equals(union(T1, union(empty(), T2)), union(T1, T2))).
 
+prop_union_union2() -> 
+    ?FORALL({T1, T2, T3},
+        {bst(atom_key(), int_value()), bst(atom_key(), int_value()),
+        bst(atom_key(), int_value())},
+        obs_equals(union(T1, union(T2, T3)), union(union(T1, T2), T3))).
+
 
 
 %%% -- Model based properties

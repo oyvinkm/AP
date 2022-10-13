@@ -97,14 +97,14 @@ prop_union_post() ->
 prop_find_post_present() ->
   % ∀ k v t. find k (insert k v t) === {found, v}
     ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
-            eqc:equals(find(K, insert(K, V, T)),
+            eqc:equals(find(K, eval({call, bst, insert, [K, V, T]})),
                        {found, V})).
 
 
 prop_find_post_absent() -> 
      % ∀ k t. find k (delete k t) === nothing
     ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
-            eqc:equals(find(K, delete(K, T)),
+            eqc:equals(find(K, eval({call, bst, delete, [K, T]})),
                        nothing)).
 
 
@@ -114,60 +114,80 @@ prop_find_post_absent() ->
 prop_size_insert() ->
     % ∀ k v t. size (insert k v t) >= size t
     ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
-            bst:size(insert(K, V, T)) >= bst:size(T)).
+            bst:size(eval({call, bst, insert, [K, V, T]})) >= bst:size(eval(T))).
 
 prop_size_delete() -> 
     ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
-            bst:size(delete(K, T)) =< bst:size(T)).
+            bst:size(eval({call, bst, delete, [K, T]})) =< bst:size(eval(T))).
 
 prop_size_union() -> 
     ?FORALL({T1,T2}, {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-            (bst:size(union(T1, T2)) >= bst:size(T1)) and 
-            (bst:size(union(T1, T2)) >= bst:size(T2))).
+            (bst:size(eval({call, bst, union, [T1, T2]})) >= bst:size(eval(T1))) and 
+            (bst:size(eval({call, bst, union, [T1, T2]})) >= bst:size(eval(T2)))).
 
 prop_insert_insert() ->
     ?FORALL({K1, K2, V1, V2, T},
             {atom_key(), atom_key(), int_value(), int_value(),
              bst(atom_key(), int_value())},
-            obs_equals(insert(K1, V1, insert(K2, V2, T)),
+            obs_equals(eval({call, bst, insert, 
+            [K1, V1, {call, bst, insert, [K2, V2, T]}]}),
                        case K1 =:= K2 of
-                           true ->  insert(K1, V1, T);
-                           false -> insert(K2, V2, insert(K1, V1, T))
+                           true ->  eval({call, bst, insert, [K1, V1, T]});
+                           false -> eval({call, bst, insert, 
+                                    [K2, V2, 
+                                    {call, bst, insert, [K1, V1, T]}]})
                        end)).
 
 prop_insert_union() -> 
     ?FORALL({K, V, T1, T2}, 
         {atom_key(), int_value(), bst(atom_key(), int_value()),
         bst(atom_key(), int_value())},
-        eqc:equals(find(K, union(insert(K,V,T1),T2)), find(K, insert(K, V, T1)))).
+        eqc:equals(find(K, 
+        eval({call, bst, union, 
+            [{call, bst, insert, 
+            [K,V,T1]},T2]})), 
+        find(K, eval({call, bst, insert, 
+        [K,V,T1]})))).
 
+        
 % Is this proper
 prop_insert_delete() ->
     ?FORALL({K, V, T},
             {atom_key(), int_value(), bst(atom_key(), int_value())},
-            obs_equals(delete(K, T), delete(K, insert(K, V, T)))).
+            obs_equals(eval({call, bst, delete, [K, T]}), 
+            eval({call, bst, delete, 
+            [K, {call, bst, insert, [K, V, T]}]}))).
 
 obs_equals(T1, T2) ->
-     eqc:equals(to_sorted_list(T1), to_sorted_list(T2)).
+     eqc:equals(to_sorted_list(eval(T1)), to_sorted_list(eval(T2))).
         
 prop_delete_insert() ->
     ?FORALL({K, V, T},
             {atom_key(), int_value(), bst(atom_key(), int_value())},
-            obs_equals(insert(K, V, T), insert(K, V, delete(K, T)))).
+            obs_equals(eval({call, bst, insert, [K, V, T]}), 
+            eval({call, bst, insert, 
+                [K, V, {call, bst, delete, [K, T]}]}))).
 
 prop_delete_delete() -> 
     ?FORALL({K1, K2, T}, {atom_key(), atom_key(), 
             bst(atom_key(), int_value())},
-            obs_equals(delete(K1, delete(K2, T)), 
+            obs_equals(eval({call, bst, delete, 
+                    [K1, {call, bst, delete, [K2, T]}]}), 
                         case K1 =:= K2 of
-                            true -> delete(K1, T);
-                            false -> delete(K2, delete(K1, T))
+                            true -> 
+                                eval({call, bst, delete, [K1, T]});
+                            false -> 
+                                eval({call, bst, delete, [K2, {call, bst, delete, [K1, T]}]})
                         end)).
 
 prop_delete_union() ->
     ?FORALL({K, T1, T2},
         {atom_key(), bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-        obs_equals(union(delete(K, T1), delete(K, T2)), delete(K, union(T1, T2)))).
+        obs_equals(eval(
+            {call, bst, union, 
+            [{call, bst, delete, [K, T1]}, 
+            {call, bst, delete, [K, T2]}]}), 
+            eval({call, bst, delete, [K, {call, bst, union, [T1, T2]}]}))).
 
 prop_union_insert() ->
     ?FORALL({K, V, T1, T2},
@@ -177,9 +197,17 @@ prop_union_insert() ->
 prop_union_union() ->
     ?FORALL({T1, T2},
         {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-        obs_equals(union(T1, union(empty(), T2)), union(T1, T2))).
+        obs_equals(
+            eval({call, bst, union, 
+                [T1, {call, bst, union, 
+                [{call, bst, empty, []}, T2]}]})
+            , eval({call, bst, union, [T1, T2]}))).
 
-
+prop_union_union_again() -> 
+    ?FORALL({T1, T2, T3},
+        {bst(atom_key(), int_value()), bst(atom_key(), int_value()),
+        bst(atom_key(), int_value())},
+        obs_equals(union(T1, union(T2, T3)), union(union(T1, T2), T3))).
 
 %%% -- Model based properties
 model(T) -> to_sorted_list(T).
