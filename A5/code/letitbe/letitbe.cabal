@@ -30,6 +30,8 @@ test-suite my-test-suite
   type: exitcode-stdio-1.0
   main-is: Test.hs
   other-modules:
+      ExprAst
+      ExprEval
       ExprProperties
       Paths_letitbe
   hs-source-dirs:

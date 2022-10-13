@@ -8,6 +8,8 @@ import qualified ExprEval as E
 -- To run it, stand in ~/A5/code/letitbe and do 
      -- $ stack ghci --ghc-options -W
      -- $ :l tests/ExprProperties
+     -- $ :l ExprProperties.hs
+     -- $ quickCheck prop_eval_simplify
 
 -- Generates random operation
 opN :: Gen Op
@@ -51,7 +53,7 @@ exprN xs n = case xs of
                      ]
 
 instance Arbitrary Expr where
-   arbitrary =  (exprN [] 5)
+   arbitrary =  sized (exprN [])
 
 prop_eval_simplify :: Expr -> Property
 prop_eval_simplify x = (E.evalTop (E.simplify x)) === (E.evalTop x)
