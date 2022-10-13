@@ -12,7 +12,7 @@ oper Minus = (-)
 oper Times = (*)
 
 eval :: Expr -> Env -> Either String Int
-eval (Const n) env = return n
+eval (Const n) _ = return n
 eval (Oper op x y) env = (oper op) <$> eval x env <*> eval y env
 eval (Var v) env = case M.lookup v env of
                      Nothing -> Left ("Unknown identifier: "++v)
@@ -27,10 +27,10 @@ contains :: Ident -> Expr -> Bool -> Bool
 contains v body b = 
   case body of
     Oper _ (Const _) (Const _) -> False
-    Var v -> True  
-    Oper op e1 e2 -> (contains v e1 b) || (contains v e2 b)
-    Let x e body -> contains v body b
-    _ -> False
+    Var x -> if v == x then True else False  
+    Oper _ e1 e2 -> (contains v e1 b) || (contains v e2 b)
+    Let _ _ body -> contains v body b
+    Const _ -> False
 
 simplify e =
   case e of
@@ -52,3 +52,4 @@ simplify e =
                       False -> simplify body
                       True -> Let v (simplify e) (simplify body)
     _ -> e
+

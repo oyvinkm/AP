@@ -11,19 +11,19 @@
 
 
 %%% A non-symbolic generator for bst, parameterised by key and value generators
-bst(Key, Value) ->
-    ?LET(KVS, eqc_gen:list({Key, Value}),
-         lists:foldl(fun({K,V}, T) -> insert(K, V, T) end,
-                     empty(),
-                     KVS)).
+%bst(Key, Value) ->
+%    ?LET(KVS, eqc_gen:list({Key, Value}),
+%         lists:foldl(fun({K,V}, T) -> insert(K, V, T) end,
+%                     empty(),
+%                     KVS)).
 
-bst_sym(Key, Value) ->
+bst(Key, Value) ->
     ?LAZY(
-        ?LET(KVS, eqc_gen:list({Key, Value}),
-            lists:foldl(fun({K,V}, T) -> 
-                {call, bst, insert, [K, V, T]} end),
-                {call, bst, empty, []},
-                KVS)).
+    ?LET(KVS, eqc_gen:list({Key, Value}),
+        lists:foldl(fun({K,V}, T) -> {call, bst, insert, [K, V, T]} end,
+            {call, bst, empty, []},
+            KVS))
+        ).  
 
 
 % example key and value generators
@@ -38,53 +38,61 @@ int_value() -> eqc_gen:int().
 % all generated bst are valid
 prop_arbitrary_valid() ->
     ?FORALL(T, bst(atom_key(), int_value()),
-            valid(T)).
+            valid(eval(T))).
 
 % if we insert into a valid tree it stays valid
 prop_insert_valid() ->
     ?FORALL({K, V, T}, {atom_key(), int_value(), bst(atom_key(), int_value())},
-            valid (insert(K, V, T))).
+            valid (eval({call, bst, insert, [K, V, T]}))).
 
 % If we check if a valid tree is empty is it still valid? 
 % Do we test empty like this?
 prop_empty_valid() -> 
     ?FORALL({_, _, _}, {atom_key(), int_value(), bst(atom_key(), int_value())},
-            valid(empty())).
+            valid(eval({call, bst, empty, []}))).
 
 %If we delete a node in a tree is it still valid? 
 prop_delete_valid() ->
     ?FORALL({K, T}, {atom_key(), bst(atom_key(), int_value())},
-            valid (delete(K,T))).
+            valid (eval({call, bst, delete, [K,T]}))).
 
 %If we take union of a branch and 
 prop_union_valid() ->
     ?FORALL({T1, T2}, {bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-            valid (union(T1, T2))).
+            valid (eval({call, bst, union, [T1, T2]}))).
 
 
 %%% -- postcondition properties
 prop_insert_post() ->
     ?FORALL({K1, K2, V, T},
             {atom_key(), atom_key(), int_value(), bst(atom_key(), int_value())},
-            eqc:equals(find(K2, insert(K1, V, T)),
+            eqc:equals(find(K2, eval({call, bst, insert, [K1, V, T]})),
                        case K1 =:= K2 of
                            true ->  {found, V};
-                           false -> find(K2, T)
+                           false -> find(K2, eval(T))
                        end)).
 
 prop_delete_post() -> 
     ?FORALL({K1, K2, T},
             {atom_key(), atom_key(), bst(atom_key(), int_value())},
-            eqc:equals(find(K2, delete(K1, T)),
+            eqc:equals(find(K2, eval({call, bst, delete, [K1, T]})),
                         case K1 =:= K2 of
                             true -> nothing;
-                            false -> find(K2, T)
+                            false -> find(K2, eval(T))
                         end)).
 prop_union_post() ->
     ?FORALL ({K, V,T1, T2},
-            {atom_key(), int_value(), bst(atom_key(), int_value()), bst(atom_key(), int_value())},
-            eqc:equals(find(K, union(insert(K, V, T1), T2)), {found, V})).
+            {atom_key(), int_value(), 
+            bst(atom_key(), int_value()), 
+            bst(atom_key(), int_value())},
+            eqc:equals(find(K, eval({call, bst, union, 
+            [{call, bst, insert, [K, V, T1]}, T2]})), 
+            {found, V})).
 % Maybe this is metamorphism idk. 
+%eval({call, bst, union, [{call, bst, insert, [K, V, T1]}, T2]})
+
+%[{set, {var,1}, {call, bst, insert, [K, V, T1]},},
+%{set, {var,2}, {call,erlang,union,[{var,1}, T2]}}]
 
 prop_find_post_present() ->
   % ∀ k v t. find k (insert k v t) === {found, v}
