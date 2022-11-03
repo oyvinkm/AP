@@ -27,9 +27,21 @@ init({Fun, Arg}) ->
 	spawn(fun() -> worker(Pid, Fun, Arg) end),
 	{ok, computing, nothing}.
 
-wait(Aid) -> gen_statem:call(Aid, wait).
+handle_res(A, Res) -> 
+    if A =:= exception -> 
+    	throw(Res);
+    true -> 
+    	Res
+    end.
 
-wait_catch(Aid) -> gen_statem:call(Aid, wait_catch).
+wait(Aid) -> {A, Res} = gen_statem:call(Aid, wait),
+			 handle_res(A, Res).
+
+wait_catch(Aid) -> try gen_statem:call(Aid, wait_catch) of
+						Res -> Res
+				   catch
+						_ : Ex -> throw(Ex)
+				   end.
 
 poll(Aid) -> gen_statem:call(Aid, poll).
 
@@ -40,7 +52,7 @@ wait_any(Aids) ->
 	Res.
 
 computing({call, From}, poll, Res) ->
-	{keep_state, Res, [{reply, From, {ok, Res}}]};
+	{keep_state, Res, [{reply, From, {Res}}]};
 
 computing({call, From}, wait, Res) ->
 	{next_state, waiting, {From, Res}};
@@ -83,8 +95,8 @@ done({call, From}, poll, Res) ->
 handle_err({call, From}, wait_catch, Ex) ->
 	{keep_state, Ex, [{reply, From, {exception, Ex}}]};
 
-handle_err({call, _}, wait, Ex) ->
-	throw(Ex);
+handle_err({call, From}, wait, Ex) ->
+	{keep_state, Ex, [{reply, From, {exception, Ex}}]};
 
 handle_err({call, From}, poll, Ex) ->
 	{keep_state, Ex, [{reply, From, {exception, Ex}}]}.

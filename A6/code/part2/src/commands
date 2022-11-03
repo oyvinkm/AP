@@ -1,0 +1,63 @@
+c(rps).
+{ok, A} = rps:start().
+rps:queue_up(A, opponent, 3).
+{ok, _, Cid} = rps:queue_up(A, aske, 3).
+rps:queue_up(A, opponent, 4).
+{ok, _, Cid} = rps:queue_up(A, aske, 4).
+rps:queue_up(A, opponent, 5).
+{ok, _, Cid} = rps:queue_up(A, aske, 5).
+rps:queue_up(A, opponent, 6).
+{ok, _, Cid} = rps:queue_up(A, aske, 6).
+rps:queue_up(A, opponent, 7).
+{ok, _, Cid} = rps:queue_up(A, aske, 7).
+rps:queue_up(A, opponent, 8).
+{ok, _, Cid} = rps:queue_up(A, aske, 8).
+rps:move(Cid, paper).
+rps:drain(A, none, øyvin).
+
+c(rps).
+{ok, A} = rps:start().
+rps:queue_up(A, opponent, 3).
+rps:queue_up(A, motherfucker, 30).
+{ok, _, Cid} = rps:queue_up(A, aske, 3).
+rps:move(Cid, rock).
+rps:move(Cid, paper).
+rps:move(Cid, scissor).
+rps:statistics(A).
+rps:move(Cid, asdf).
+rps:statistics(A).
+
+
+c(rps).
+{ok, A} = rps:start().
+rps:queue_up(A, opponent, 3).
+{ok, _, Cid} = rps:queue_up(A, aske, 3).
+rps:move(Cid, paper).
+
+
+c(rps).
+{ok, A} = rps:start().
+rps:queue_up(A, opponent, 3).
+{ok, _, Cid} = rps:queue_up(A, aske, 3).
+rps:move(Cid, rock).
+rps:move(Cid, paper).
+rps:move(Cid, scissor).
+rps:move(Cid, asdf).
+
+c(rps).
+{ok, A} = rps:start().
+rps:queue_up(A, opponent, 3).
+{ok, _, Cid} = rps:queue_up(A, aske, 3).
+rps:queue_up(A, opponent2, 5).
+{ok, _, Cid2} = rps:queue_up(A, øyvin, 5).
+rps:move(Cid, rock).
+rps:move(Cid, paper).
+rps:move(Cid, scissor).
+rps:move(Cid2, rock).
+rps:move(Cid2, paper).
+rps:move(Cid2, scissor).
+rps:move(Cid2, scissor).
+rps:move(Cid2, scissor).
+
+
+lists:map(fun(x) -> x + 5 end, [1,2,3]).
